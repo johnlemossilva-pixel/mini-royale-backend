@@ -20,7 +20,8 @@ app.add_middleware(
 )
 
 # Conexão MongoDB (simplificado)
-MONGO_URL = "mongodb://localhost:27017/"
+MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
 DB_NAME = "mini_royale_db"
 PLAYERS_COLLECTION = "players"
 
