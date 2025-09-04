@@ -20,7 +20,15 @@ app.add_middleware(
 )
 
 # Conexão MongoDB (simplificado)
-MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+class MongoDB:
+    def __init__(self):
+        self.client = MongoClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
+        self.db = self.client[DB_NAME]
+        self.players_collection = self.db[PLAYERS_COLLECTION]
+        print("Conexão com o MongoDB estabelecida.")
+
 
 DB_NAME = "mini_royale_db"
 PLAYERS_COLLECTION = "players"
