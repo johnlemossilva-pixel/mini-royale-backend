@@ -22,9 +22,6 @@ app.add_middleware(
 # Conexão MongoDB (simplificado)
 MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-DB_NAME = "mini_royale_db"
-PLAYERS_COLLECTION = "players"
-
 class MongoDB:
     def __init__(self):
         self.client = MongoClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
@@ -46,9 +43,6 @@ class MongoDB:
             player["_id"] = str(player["_id"])
         return player
 
-db_service = MongoDB()
-
-router = APIRouter()
 
 class PlayerModel(BaseModel):
     id: str
