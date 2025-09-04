@@ -20,22 +20,14 @@ app.add_middleware(
 )
 
 # Conexão MongoDB (simplificado)
-MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-class MongoDB:
-    def __init__(self):
-        self.client = MongoClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
-        self.db = self.client[DB_NAME]
-        self.players_collection = self.db[PLAYERS_COLLECTION]
-        print("Conexão com o MongoDB estabelecida.")
-
+MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 DB_NAME = "mini_royale_db"
 PLAYERS_COLLECTION = "players"
 
 class MongoDB:
     def __init__(self):
-        self.client = MongoClient(MONGO_URL)
+        self.client = MongoClient(MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
         self.db = self.client[DB_NAME]
         self.players_collection = self.db[PLAYERS_COLLECTION]
         print("Conexão com o MongoDB estabelecida.")
@@ -70,28 +62,4 @@ class MatchStart(BaseModel):
 @router.get("/perfil/{player_id}")
 async def get_player_profile(player_id: str):
     try:
-        player = db_service.get_player_data(player_id)
-        if player:
-            return player
-        raise HTTPException(status_code=404, detail="Jogador não encontrado")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@router.post("/iniciar-partida")
-async def start_match(match: MatchStart):
-    players_data = [player.dict() for player in match.players]
-    match_result = simulate_match(players_data)
-
-    player_gems = match_result['players_rewards'].get(match.player_id, 0)
-    
-    update_result = db_service.update_player_gems(
-        player_id=match.player_id,
-        gems_earned=player_gems
-    )
-    
-    match_result['db_updated'] = update_result
-    
-    return match_result
-
-app.include_router(router)
-
+        player = db_service.get_player
