@@ -133,6 +133,12 @@ async def get_player_profile(player_id: str):
     player = db_service.get_player_data(player_id)
     if player:
         return player
+    raise HTTPException(status_code=404, detail="Jogador não encontrado")
+
+async def get_player_profile(player_id: str):
+    player = db_service.get_player_data(player_id)
+    if player:
+        return player
     raise HTTPException(status_code=404, detail="Player not found")
 
 @router.post("/iniciar-partida")
