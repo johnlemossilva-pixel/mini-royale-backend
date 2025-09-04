@@ -136,7 +136,8 @@ async def get_player_profile(player_id: str):
     raise HTTPException(status_code=404, detail="Player not found")
 
 @router.post("/iniciar-partida")
-async def start_match(match_ MatchStart):
+async def start_match(match: MatchStart):
+
     players_data = [player.dict() for player in match_data.players]
     match_result = simulate_match(players_data)
 
