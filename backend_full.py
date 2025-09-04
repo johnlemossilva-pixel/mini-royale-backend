@@ -93,10 +93,3 @@ async def start_match(match: MatchStart):
     return match_result
 
 app.include_router(router)
-def simulate_match(players_data):
-    # Exemplo simples de simulação, pode ser substituído pela sua lógica real
-    players_rewards = {}
-    for player in players_
-        players_rewards[player["id"]] = random.randint(1, 10)  # Recompensa aleatória
-    return {"players_rewards": players_rewards}
-
