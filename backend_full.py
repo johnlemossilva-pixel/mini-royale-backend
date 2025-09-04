@@ -4,6 +4,11 @@ from pydantic import BaseModel
 from typing import List
 import random
 from pymongo import MongoClient
+import os # Importar os para variáveis de ambiente
+from dotenv import load_dotenv # Importar dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 app = FastAPI()
 
@@ -19,9 +24,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexão MongoDB (simplificado)
-MONGO_URL = "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
+# Conexão MongoDB (simplificado e seguro com variáveis de ambiente)
+MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 DB_NAME = "mini_royale_db"
 PLAYERS_COLLECTION = "players"
 
@@ -33,6 +37,7 @@ class MongoDB:
         print("Conexão com o MongoDB estabelecida.")
 
     def update_player_gems(self, player_id: str, gems_earned: int):
+        # Usar o _id do MongoDB para atualizar
         result = self.players_collection.update_one(
             {"_id": player_id},
             {"$inc": {"gems": gems_earned}},
@@ -43,6 +48,7 @@ class MongoDB:
     def get_player_data(self, player_id: str):
         player = self.players_collection.find_one({"_id": player_id})
         if player:
+            # Converte o ObjectId do MongoDB para string para ser serializado
             player["_id"] = str(player["_id"])
         return player
 
@@ -59,10 +65,10 @@ class MatchStart(BaseModel):
     players: List[PlayerModel]
     player_id: str
 
-def simulate_match(players_data):
-    # Exemplo simples de simulação, pode ser substituído pela sua lógica real
+def simulate_match(players_data: List[dict]):
+    # Simulação de partida: retorna uma recompensa aleatória para cada jogador
     players_rewards = {}
-    for player in players_
+    for player in players_data:
         players_rewards[player["id"]] = random.randint(1, 10)  # Recompensa aleatória
     return {"players_rewards": players_rewards}
 
@@ -78,7 +84,9 @@ async def get_player_profile(player_id: str):
 
 @router.post("/iniciar-partida")
 async def start_match(match: MatchStart):
-    players_data = [player.dict() for player in match.players]
+    # Converte os objetos PlayerModel para dicionários
+    players_data = [player.model_dump() for player in match.players]
+    
     match_result = simulate_match(players_data)
 
     player_gems = match_result["players_rewards"].get(match.player_id, 0)
