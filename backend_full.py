@@ -4,18 +4,15 @@ from pydantic import BaseModel
 from typing import List
 import random
 from pymongo import MongoClient
-import os # Importar os para variáveis de ambiente
-from dotenv import load_dotenv # Importar dotenv
+import os
+from dotenv import load_dotenv
 
-# Carregar variáveis de ambiente do arquivo .env
+# Carregar variáveis de ambiente
 load_dotenv()
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-]
-
+origins = ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -24,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexão MongoDB (simplificado e seguro com variáveis de ambiente)
+# Conexão MongoDB
 MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://johnlemossilva_db_user:BChX9sxgXSXErMTS@cluster0.knt4teh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 DB_NAME = "mini_royale_db"
 PLAYERS_COLLECTION = "players"
@@ -37,7 +34,6 @@ class MongoDB:
         print("Conexão com o MongoDB estabelecida.")
 
     def update_player_gems(self, player_id: str, gems_earned: int):
-        # Usar o _id do MongoDB para atualizar
         result = self.players_collection.update_one(
             {"_id": player_id},
             {"$inc": {"gems": gems_earned}},
@@ -48,9 +44,12 @@ class MongoDB:
     def get_player_data(self, player_id: str):
         player = self.players_collection.find_one({"_id": player_id})
         if player:
-            # Converte o ObjectId do MongoDB para string para ser serializado
             player["_id"] = str(player["_id"])
         return player
+    
+    # Novo método para testar a consulta diretamente
+    def test_query(self, player_id: str):
+        return self.players_collection.find_one({"_id": player_id})
 
 db_service = MongoDB()
 
@@ -65,11 +64,10 @@ class MatchStart(BaseModel):
     players: List[PlayerModel]
     player_id: str
 
-def simulate_match(players_data: List[dict]):
-    # Simulação de partida: retorna uma recompensa aleatória para cada jogador
+def simulate_match(players: List[dict]):
     players_rewards = {}
-    for player in players_data:
-        players_rewards[player["id"]] = random.randint(1, 10)  # Recompensa aleatória
+    for player in players:
+        players_rewards[player["id"]] = random.randint(1, 10)
     return {"players_rewards": players_rewards}
 
 @router.get("/perfil/{player_id}")
@@ -82,20 +80,28 @@ async def get_player_profile(player_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
+@router.get("/test-query/{player_id}")
+async def test_query_player(player_id: str):
+    try:
+        player = db_service.test_query(player_id)
+        if player:
+            player["_id"] = str(player["_id"])
+            return player
+        else:
+            return {"detail": "Jogador não encontrado no teste direto"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no teste direto: {str(e)}")
+
 @router.post("/iniciar-partida")
 async def start_match(match: MatchStart):
-    # Converte os objetos PlayerModel para dicionários
     players_data = [player.model_dump() for player in match.players]
     
     match_result = simulate_match(players_data)
-
     player_gems = match_result["players_rewards"].get(match.player_id, 0)
-
     update_result = db_service.update_player_gems(
         player_id=match.player_id,
         gems_earned=player_gems
     )
-
     match_result["db_updated"] = update_result
 
     return match_result
