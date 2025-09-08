@@ -1,3 +1,56 @@
+import os
+from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Settings:
+    MONGO_URL = os.getenv("MONGO_URL")
+    DB_NAME = os.getenv("DB_NAME", "mini_royale_db")
+    PLAYERS_COLLECTION = "players"
+
+settings = Settings()
+
+class MongoDB:
+    def __init__(self):
+        self.client = None
+        self.db = None
+        self.players_collection = None
+    
+    def connect(self):
+        if not self.client:
+            self.client = MongoClient(settings.MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
+            self.db = self.client[settings.DB_NAME]
+            self.players_collection = self.db[settings.PLAYERS_COLLECTION]
+
+mongo_db = MongoDB()
+
+def get_db():
+    try:
+        if not mongo_db.client:
+            mongo_db.connect()
+        yield mongo_db
+    finally:
+        # Mantém conexão aberta enquanto app estiver rodando
+        pass
+
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class PlayerModel(BaseModel):
+    id: str = Field(..., alias="_id")
+    nome: str
+    vida: int = 100
+    gems: int = 0
+
+class MatchStart(BaseModel):
+    players: List[PlayerModel]
+    player_id: str
+
+class PlayerUpdate(BaseModel):
+    vida: Optional[int] = None
+    gems: Optional[int] = None
+
 from fastapi import APIRouter, HTTPException, Depends
 from pymongo import UpdateOne
 from pymongo.errors import OperationFailure, ConnectionFailure
@@ -26,13 +79,11 @@ def simulate_match(players: list):
                 "gems_ganhas": gems_ganhas
             }
         except (KeyError, TypeError, ValueError):
-            # Ignora o jogador se os dados estiverem mal formatados ou ausentes
             continue
     return results
 
 @router.get("/perfil/{player_id}", response_model=PlayerModel)
 async def get_player_profile(player_id: str, db: MongoDB = Depends(get_db)):
-    """Busca o perfil de um jogador pelo ID."""
     try:
         player = db.players_collection.find_one({"_id": player_id})
         if player:
@@ -42,8 +93,7 @@ async def get_player_profile(player_id: str, db: MongoDB = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Erro interno ao acessar o banco de dados.")
 
 @router.post("/match/start")
-async def start_match(match_data: MatchStart, db: MongoDB = Depends(get_db)):
-    """Inicia uma partida, simula os resultados e atualiza os jogadores."""
+async def start_match(match_ MatchStart, db: MongoDB = Depends(get_db)):
     player_ids = [player.id for player in match_data.players]
     players_data = list(db.players_collection.find({"_id": {"$in": player_ids}}))
     
@@ -68,8 +118,7 @@ async def start_match(match_data: MatchStart, db: MongoDB = Depends(get_db)):
     return {"status": "match_ended", "results": results}
 
 @router.patch("/perfil/{player_id}")
-async def update_player(player_id: str, data: PlayerUpdate, db: MongoDB = Depends(get_db)):
-    """Atualiza a vida ou as gems de um jogador."""
+async def update_player(player_id: str,  PlayerUpdate, db: MongoDB = Depends(get_db)):
     update_doc = {"$inc": {}}
     if data.vida is not None:
         update_doc["$inc"]["vida"] = data.vida
@@ -87,3 +136,21 @@ async def update_player(player_id: str, data: PlayerUpdate, db: MongoDB = Depend
         raise HTTPException(status_code=500, detail="Erro ao atualizar dados no banco de dados.")
     
     raise HTTPException(status_code=404, detail="Jogador não encontrado.")
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import players
+
+app = FastAPI()
+
+origins = ["http://localhost:3000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(players.router, prefix="/api/v1")
