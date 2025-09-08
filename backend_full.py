@@ -4,7 +4,6 @@ from routers import players_router
 
 app = FastAPI()
 
-# Configuração do CORS
 origins = ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
@@ -14,21 +13,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclui os roteadores
 app.include_router(players_router.router, prefix="/api/v1")
 import os
+from pymongo import MongoClient
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Settings:
-    MONGO_URL: str = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
-    DB_NAME: str = os.getenv("DB_NAME", "mini_royale_db")
-    PLAYERS_COLLECTION: str = "players"
+    MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://username:pass@cluster.mongodb.net/?retryWrites=true&w=majority")
+    DB_NAME = os.getenv("DB_NAME", "mini_royale_db")
+    PLAYERS_COLLECTION = "players"
 
 settings = Settings()
-from pymongo import MongoClient
-from config import settings
 
 class MongoDB:
     def __init__(self):
@@ -37,12 +34,12 @@ class MongoDB:
         self.players_collection = None
     
     def connect(self):
-        if self.client is None:
+        if not self.client:
             self.client = MongoClient(settings.MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
             self.db = self.client[settings.DB_NAME]
             self.players_collection = self.db[settings.PLAYERS_COLLECTION]
             print("Conexão com o MongoDB estabelecida.")
-
+    
     def close(self):
         if self.client:
             self.client.close()
@@ -53,29 +50,17 @@ mongo_db = MongoDB()
 
 def get_db():
     try:
-        if mongo_db.client is None:
+        if not mongo_db.client:
             mongo_db.connect()
         yield mongo_db
     finally:
-        # A conexão é fechada quando a aplicação é encerrada
+        # deixar aberto enquanto rodar o app
         pass
-
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-class PyObjectId(str):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not isinstance(v, str):
-            raise TypeError("string required")
-        return cls(v)
-
 class PlayerModel(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId)
+    id: str = Field(..., alias="_id")
     nome: str
     vida: int = 100
     gems: int = 0
@@ -87,16 +72,15 @@ class MatchStart(BaseModel):
 class PlayerUpdate(BaseModel):
     gems_earned: Optional[int] = None
     vida_earned: Optional[int] = None
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from pymongo.errors import OperationFailure
 from database import get_db, MongoDB
-from schemas import PlayerModel, MatchStart, PlayerUpdate
+from models import PlayerModel, MatchStart
 import random
 
 router = APIRouter()
 
 def simulate_match(players: list):
-    """Simula uma partida e calcula os resultados."""
     results = {}
     for player in players:
         dano = random.randint(5, 20)
@@ -122,27 +106,30 @@ async def get_player_profile(player_id: str, db: MongoDB = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.post("/match/start")
-async def start_match(match_data: MatchStart, db: MongoDB = Depends(get_db)):
-    # Lógica para simular a partida e atualizar os jogadores
-    # Isso é apenas um exemplo simplificado
-    
-    # 1. Obter os dados completos dos jogadores do DB
+async def start_match(match_ MatchStart, db: MongoDB = Depends(get_db)):
     player_ids = [player.id for player in match_data.players]
-    
-    # Validações e lógica de negócio aqui...
-    
-    # 2. Simular a partida
     players_data = list(db.players_collection.find({"_id": {"$in": player_ids}}))
     if len(players_data) != len(player_ids):
         raise HTTPException(status_code=400, detail="Um ou mais jogadores não foram encontrados.")
     
     results = simulate_match(players_data)
-    
-    # 3. Atualizar dados no banco de dados
     for player_id, result in results.items():
         db.players_collection.update_one(
             {"_id": player_id},
             {"$set": {"vida": result["vida_restante"]}, "$inc": {"gems": result["gems_ganhas"]}}
         )
-    
     return {"status": "match_ended", "results": results}
+
+@router.patch("/perfil/{player_id}/vida")
+async def update_vida(player_id: str, amount: int = Body(..., embed=True), db: MongoDB = Depends(get_db)):
+    res = db.players_collection.update_one({"_id": player_id}, {"$inc": {"vida": amount}})
+    if res.modified_count:
+        return {"detail": f"Vida atualizada em {amount} para jogador {player_id}"}
+    raise HTTPException(status_code=404, detail="Jogador não encontrado")
+
+@router.patch("/perfil/{player_id}/gems")
+async def update_gems(player_id: str, amount: int = Body(..., embed=True), db: MongoDB = Depends(get_db)):
+    res = db.players_collection.update_one({"_id": player_id}, {"$inc": {"gems": amount}})
+    if res.modified_count:
+        return {"detail": f"Gems atualizadas em {amount} para jogador {player_id}"}
+    raise HTTPException(status_code=404, detail="Jogador não encontrado")
