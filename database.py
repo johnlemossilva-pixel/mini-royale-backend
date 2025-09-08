@@ -2,7 +2,6 @@ import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
-# Carrega as variáveis do arquivo .env
 load_dotenv()
 
 class Settings:
@@ -20,18 +19,9 @@ class MongoDB:
     
     def connect(self):
         if not self.client:
-            # Conexão segura com MongoDB
-            self.client = MongoClient(settings.MONGO_URL, tls=True, tlsAllowInvalidCertificates=True)
+            self.client = MongoClient(settings.MONGO_URL)
             self.db = self.client[settings.DB_NAME]
             self.players_collection = self.db[settings.PLAYERS_COLLECTION]
 
 mongo_db = MongoDB()
-
-def get_db():
-    try:
-        if not mongo_db.client:
-            mongo_db.connect()
-        yield mongo_db
-    finally:
-        # Mantém a conexão aberta enquanto app estiver rodando
-        pass
+mongo_db.connect()
