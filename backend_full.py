@@ -80,3 +80,4 @@ async def update_player(player_id: str,  PlayerUpdate, db: MongoDB = Depends(get
         return {"detail": "Dados do jogador atualizados com sucesso."}
     
     raise HTTPException(status_code=404, detail="Jogador não encontrado.")
+
