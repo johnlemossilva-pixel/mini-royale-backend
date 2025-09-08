@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(players_router.router, prefix="/api/v1")
+
 import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -21,7 +22,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://username:pass@cluster.mongodb.net/?retryWrites=true&w=majority")
+    MONGO_URL = os.getenv("MONGO_URL")
     DB_NAME = os.getenv("DB_NAME", "mini_royale_db")
     PLAYERS_COLLECTION = "players"
 
@@ -54,10 +55,11 @@ def get_db():
             mongo_db.connect()
         yield mongo_db
     finally:
-        # deixar aberto enquanto rodar o app
+        # Mantém aberta enquanto o app roda
         pass
+
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 class PlayerModel(BaseModel):
     id: str = Field(..., alias="_id")
@@ -69,11 +71,7 @@ class MatchStart(BaseModel):
     players: List[PlayerModel]
     player_id: str
 
-class PlayerUpdate(BaseModel):
-    gems_earned: Optional[int] = None
-    vida_earned: Optional[int] = None
 from fastapi import APIRouter, HTTPException, Depends, Body
-from pymongo.errors import OperationFailure
 from database import get_db, MongoDB
 from models import PlayerModel, MatchStart
 import random
@@ -95,15 +93,10 @@ def simulate_match(players: list):
 
 @router.get("/perfil/{player_id}", response_model=PlayerModel)
 async def get_player_profile(player_id: str, db: MongoDB = Depends(get_db)):
-    try:
-        player = db.players_collection.find_one({"_id": player_id})
-        if player:
-            return player
-        raise HTTPException(status_code=404, detail="Jogador não encontrado")
-    except OperationFailure as e:
-        raise HTTPException(status_code=500, detail=f"Erro no banco de dados: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+    player = db.players_collection.find_one({"_id": player_id})
+    if player:
+        return player
+    raise HTTPException(status_code=404, detail="Jogador não encontrado")
 
 @router.post("/match/start")
 async def start_match(match_ MatchStart, db: MongoDB = Depends(get_db)):
@@ -133,3 +126,4 @@ async def update_gems(player_id: str, amount: int = Body(..., embed=True), db: M
     if res.modified_count:
         return {"detail": f"Gems atualizadas em {amount} para jogador {player_id}"}
     raise HTTPException(status_code=404, detail="Jogador não encontrado")
+
