@@ -122,8 +122,4 @@ async def update_vida(player_id: str, amount: int = Body(..., embed=True), db: M
 
 @router.patch("/perfil/{player_id}/gems")
 async def update_gems(player_id: str, amount: int = Body(..., embed=True), db: MongoDB = Depends(get_db)):
-    res = db.players_collection.update_one({"_id": player_id}, {"$inc": {"gems": amount}})
-    if res.modified_count:
-        return {"detail": f"Gems atualizadas em {amount} para jogador {player_id}"}
-    raise HTTPException(status_code=404, detail="Jogador não encontrado")
-
+    res = db.players_collection.update
