@@ -1,10 +1,15 @@
 from flask import Flask, jsonify, request
+from database import mongo_db
 
 app = Flask(__name__)
 
 @app.route('/api/v1/perfil/<player_id>', methods=['GET'])
 def get_player_profile(player_id):
-    return jsonify({"player_id": player_id, "life": 100, "gems": 50})
+    player = mongo_db.players_collection.find_one({"_id": player_id}, {"_id": 0})
+    if player:
+        return jsonify(player)
+    else:
+        return jsonify({"error": "Player not found"}), 404
 
 @app.route('/api/v1/match/start', methods=['POST'])
 def start_match():
@@ -12,4 +17,5 @@ def start_match():
     return jsonify({"message": "Match started", "data": data})
 
 if __name__ == '__main__':
+    mongo_db.connect()
     app.run(host='0.0.0.0', port=8000)
