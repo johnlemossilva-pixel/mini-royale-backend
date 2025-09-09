@@ -16,11 +16,7 @@ def start_match():
     data = request.json
     return jsonify({"message": "Match started", "data": data})
 
-if __name__ == '__main__':
-    mongo_db.connect()
-    app.run(host='0.0.0.0', port=8000)
-    
-    @app.route('/api/v1/perfil', methods=['POST'])
+@app.route('/api/v1/perfil', methods=['POST'])
 def create_player():
     data = request.json
     # Valide os campos obrigatórios (exemplo simplificado)
@@ -42,5 +38,6 @@ def update_player(player_id):
     else:
         return jsonify({"error": "Jogador não encontrado."}), 404
 
-
-
+if __name__ == '__main__':
+    mongo_db.connect()
+    app.run(host='0.0.0.0', port=8000)
